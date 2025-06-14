@@ -40,6 +40,16 @@
 - **update\_header** – update header fields (client, email, …).
 - **update\_item** – edit qty/price/description of an existing line.
 
+### 1.2  More on MCP
+
+Additional reading on the **Model Context Protocol** lives in the `learn/` folder. Key files:
+
+* `mcp1.md` – *MCP Explained: The New Standard Connecting AI to Everything*.
+* `mcp2.md` – *Introducing the Model Context Protocol*.
+* `FastMCP-Readme.md` – docs for **FastMCP v2**, the Pythonic toolkit used here.
+
+MCP is an open standard introduced by Anthropic that lets AI agents connect with tools, services and data in a uniform way. Review these documents before implementing new tools or expanding the MCP endpoints.
+
 ---
 
 ## 2  Code Base Layout
