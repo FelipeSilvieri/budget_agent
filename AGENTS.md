@@ -1,26 +1,28 @@
 # AGENTS.md
 
-> **TL;DR**  This repository hosts an **AI‑powered Quotation Generator** for **Portal Center**, a small business that installs and maintains automatic gates, CCTV systems and security structures for condominiums across Greater São Paulo.  The system lets the owner send a short **voice or text message in Telegram** and instantly receive a fully‑formatted **DOCX proposal** based on the company’s long‑time template.  The backend is written in **Python 3.12** (FastAPI + FastMCP + python‑docx) and is orchestrated via **n8n**.  The goal of this document is to brief Codex (and any human contributors) on how the project is organised, how to run it locally and how to collaborate effectively.
+> **TL;DR** This repository hosts an **AI‑powered Quotation Generator** for **Portal Center**, a small business that installs and maintains security gates, CCTV systems and metal structures for condominiums across Greater São Paulo.  The owner sends a short **voice or text message in Telegram** and instantly receives a fully‑formatted **DOCX proposal** based on the company’s long‑time template.  The backend is built with **Python 3.12**, **FastMCP** and **python‑docx**, orchestrated via **n8n**—no extra REST layer is used in the MVP.  This document briefs Codex (and any human contributors) on how the project is organised, how to run it locally and how to collaborate effectively.
+
+> ℹ️ **Mais detalhes sobre a aplicação de MCP encontram‑se na pasta **``**, na raiz do repositório.**
 
 ---
 
-## 1  Project Purpose & Scope
+## 1  Project Purpose & Scope
 
-|                  | Details                                                                                                                                                                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Objective**    | Automate generation of client quotations, cutting preparation time from *tens of minutes* to *seconds*.                                                                                                                                          |
-| **Primary User** | Company director (Telegram on mobile).                                                                                                                                                                                                           |
-| **MVP Features** | \* Parse natural‑language (PT‑BR) voice or text. \* Validate required fields (A/C, e‑mail, date…). \* Maintain dialogue to collect missing data. \* Insert line‑items (product/service, qty, unit price). \* Produce DOCX using legacy template. |
-| **Out‑of‑scope** | Redesigning the visual layout, digital signatures, CRM integration (future).                                                                                                                                                                     |
-| **Tech Stack**   | Python 3.12, FastAPI, FastMCP, python‑docx, Pydantic, PostgreSQL (SQLite for dev), OpenAI GPT‑4o & Whisper, n8n, Telegram Bot API, Docker, GitHub Actions.                                                                                       |
+|                  | Details                                                                                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Objective**    | Automate generation of client quotations, cutting preparation time from *tens of minutes* to *seconds*.                                                                                                                                     |
+| **Primary User** | Company director (Telegram on mobile).                                                                                                                                                                                                      |
+| **MVP Features** | • Parse natural‑language (PT‑BR) voice or text. • Validate required fields (A/C, e‑mail, date…). • Maintain dialogue to collect missing data. • Insert line‑items (product/service, qty, unit price). • Produce DOCX using legacy template. |
+| **Out‑of‑scope** | Redesigning the visual layout, digital signatures, CRM integration (future).                                                                                                                                                                |
+| **Tech Stack**   | Python 3.12, **FastMCP** (streamable‑http transport), python‑docx, Pydantic, PostgreSQL (SQLite for dev), OpenAI GPT‑4o & Whisper, n8n, Telegram Bot API, Docker, GitHub Actions.                                                           |
 
 ### 1.1  System Architecture (high‑level)
 
 ```
-┌──────────────────┐      ┌─────────────┐      ┌────────────────┐
-│ Telegram Client  │──►──│  n8n LLM    │──►──│ FastMCP Client │
-└──────────────────┘      │  (GPT‑4o)   │      │  (FastAPI)     │
-                          └─────┬───────┘      └──────┬─────────┘
+┌──────────────────┐      ┌─────────────┐      ┌──────────────────┐
+│ Telegram Client  │──►──│  n8n LLM    │──►──│ FastMCP Server   │
+└──────────────────┘      │  (GPT‑4o)   │      │  (Python)       │
+                          └─────┬───────┘      └──────┬──────────┘
                                 │                   ┌─▼───────────┐
                                 │                   │ Service     │
                                 │                   │  Layer      │
@@ -33,22 +35,12 @@
                           └─────────────┘   └──────────────┘   └────────────┘
 ```
 
-*Every AI call is wrapped by ****FastMCP**** so that the agent can decide which "tool" (endpoint) to invoke:*
+*The FastMCP server exposes tools consumed directly by the LLM agent:*
 
 - **create\_budget** – start a new quotation.
 - **add\_item** – append a line‑item.
 - **update\_header** – update header fields (client, email, …).
 - **update\_item** – edit qty/price/description of an existing line.
-
-### 1.2  More on MCP
-
-Additional reading on the **Model Context Protocol** lives in the `learn/` folder. Key files:
-
-* `mcp1.md` – *MCP Explained: The New Standard Connecting AI to Everything*.
-* `mcp2.md` – *Introducing the Model Context Protocol*.
-* `FastMCP-Readme.md` – docs for **FastMCP v2**, the Pythonic toolkit used here.
-
-MCP is an open standard introduced by Anthropic that lets AI agents connect with tools, services and data in a uniform way. Review these documents before implementing new tools or expanding the MCP endpoints.
 
 ---
 
@@ -56,21 +48,17 @@ MCP is an open standard introduced by Anthropic that lets AI agents connect with
 
 ```
 📦 portalcenter‑quotation
-├─ app/                   # FastAPI entrypoint & routers
-│  ├─ main.py             # `uvicorn app.main:app` boots here
-│  ├─ api/                # REST + MCP endpoints
-│  ├─ core/               # settings, logging, deps
-│  ├─ mcp_tools/          # create_budget.py, add_item.py, …
-│  ├─ services/           # business logic (LLM, docx, db)
-│  ├─ models/             # Pydantic schemas & ORM models
-│  └─ templates/          # .docx master template(s)
-├─ tests/                 # pytest suites
-├─ scripts/               # one‑off helpers / data loaders
-├─ requirements.txt       # frozen with `pip‑tools`
-└─ docker/                # Dockerfile & compose overrides
+├─ mcp_server.py         # `python mcp_server.py` boots FastMCP
+├─ mcp_tools/            # create_budget.py, add_item.py, … (decorated with @tool)
+├─ services/             # business logic (LLM calls, docx, db)
+├─ templates/            # .docx master template(s)
+├─ tests/                # pytest suites
+├─ scripts/              # one‑off helpers / data loaders
+├─ requirements.txt      # frozen with `pip‑tools`
+└─ docker/               # Dockerfile & compose overrides
 ```
 
-> **Tip:** keep modules small and side‑effect‑free; business logic must live in `services/`, never inside routes.
+> **Tip:** keep modules small and side‑effect‑free; business logic lives in `services/`, never in `mcp_tools/`.
 
 ---
 
@@ -87,31 +75,13 @@ MCP is an open standard introduced by Anthropic that lets AI agents connect with
 
 ---
 
-## 4  Local Setup
-
-```bash
-# 1. Clone and enter repo
-$ git clone https://github.com/<org>/portalcenter-quotation.git && cd portalcenter-quotation
-
-# 2. Create venv + install deps
-$ python -m venv .venv && source .venv/bin/activate
-$ pip install -r requirements.txt
-
-# 3. Copy & edit environment variables
-$ cp .env.example .env  # fill OPENAI_API_KEY, TELEGRAM_TOKEN, TEMPLATE_PATH …
-
-# 4. Launch API (hot‑reload)
-$ uvicorn app.main:app --reload --port 8000
-
-# 5. Run ngrok or expose via n8n → Telegram webhook
-```
 
 ### 4.1  Useful Make Targets
 
 ```bash
 make lint   # ruff + mypy
 make test   # pytest + coverage
-make run    # uvicorn production settings
+make run    # python mcp_server.py (prod flags)
 ```
 
 ---
@@ -122,24 +92,24 @@ make run    # uvicorn production settings
 | -------------- | -------------------------------------------------------- |
 | **pytest**     | Unit & integration tests.                                |
 | **pytest‑cov** | Enforce ≥ 90 % coverage on `services/` and `mcp_tools/`. |
-| **httpx**      | Async API test‑client.                                   |
+| **httpx**      | Async client to test MCP HTTP transport.                 |
 
 ### Rules
 
-1. Every new endpoint or service function requires at least one happy‑path and one failure test.
-2. Fixtures must be factory‑based (`pytest‑factoryboy`) to avoid brittle hard‑coded IDs.
+1. Every new tool or service function requires at least one happy‑path and one failure test.
+2. Fixtures use factory‑based objects (`pytest‑factoryboy`) to avoid brittle IDs.
 3. Mock external APIs (OpenAI, Telegram) with `respx`.
 
 ---
 
-## 6  Automation & CI
+## 6  Automation & CI
 
 - **GitHub Actions** pipeline:
   1. `setup` – cache deps, install Python.
   2. `lint` – black + ruff + mypy.
   3. `test` – pytest w/ coverage, upload badge.
   4. `docker` – build & push on tag `v*.*.*`.
-- Merges into `main` require ✅ for steps 2‑3.
+- Merges into `main` require ✅ for steps 2‑3.
 
 ---
 
@@ -152,17 +122,17 @@ make run    # uvicorn production settings
 
 ---
 
-## 8  Scalability & Maintenance
+## 8  Scalability & Maintenance
 
-| Area              | Recommendation                                                                                        |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| **Templates**     | Version each DOCX in `templates/vYYYYMMDD_template.docx`; store migration notes.                      |
-| **Database**      | Use Alembic for schema migrations; never break backward compatibility with old quotations.            |
-| **Services**      | Keep pure functions; side‑effects isolated (I/O, external APIs).                                      |
-| **Agents**        | New "tools" must inherit from `BaseTool` and register in `app.mcp_tools.__init__` for auto‑discovery. |
-| **Docs**          | All public functions/classes need docstrings; complex flows get diagrams in `/docs/`.                 |
-| **Dependencies**  | Weekly Dependabot updates; pin exact versions in `requirements.txt`.                                  |
-| **Observability** | Structured logging (json) + OpenTelemetry traces (future).                                            |
+| Area              | Recommendation                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| **Templates**     | Version each DOCX in `templates/vYYYYMMDD_template.docx`; store migration notes.           |
+| **Database**      | Use Alembic for schema migrations; never break backward compatibility with old quotations. |
+| **Services**      | Keep pure functions; side‑effects isolated (I/O, external APIs).                           |
+| **Agents**        | New "tools" inherit from `BaseTool` and auto‑register in `mcp_tools.__init__`.             |
+| **Docs**          | All public functions/classes need docstrings; complex flows get diagrams in `/docs/`.      |
+| **Dependencies**  | Weekly Dependabot updates; pin exact versions in `requirements.txt`.                       |
+| **Observability** | Structured logging (json) + OpenTelemetry traces (future).                                 |
 
 ---
 
@@ -178,7 +148,7 @@ make run    # uvicorn production settings
 
 ## 10  Acknowledgements
 
-*Business domain experts*: **Portal Center** (São Bernardo do Campo, BR)  —  template & process insights.
+*Business domain experts*: **Portal Center** (São Bernardo do Campo, BR) — template & process insights.
 
 *Technical mentorship*: **Felipe Matos Silvieri** – project lead & architect.
 
