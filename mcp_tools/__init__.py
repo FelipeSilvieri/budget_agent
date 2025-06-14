@@ -1,12 +1,14 @@
+"""Tool registry for the Quotation Generator."""
+
 from fastmcp import FastMCP
 
-from .generate_quote import GenerateQuoteTool
+from .generate_quote import register as register_generate_quote
 
-
-mcp = FastMCP(
+mcp: FastMCP = FastMCP(
     name="Quotation Generator",
-    description="Uma tool que orquestra a geração de orçamentos para clientes.",
+    instructions="Uma tool que orquestra a geração de orçamentos para clientes.",
 )
-mcp.add_tool(GenerateQuoteTool())
 
-__all__ = ["mcp", "GenerateQuoteTool"]
+register_generate_quote(mcp)
+
+__all__ = ["mcp"]

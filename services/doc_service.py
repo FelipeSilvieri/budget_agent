@@ -36,7 +36,7 @@ def generate_document(req: BudgetRequest) -> str:
     doc = Document()
     logo_path = os.path.join(os.path.dirname(__file__), "..", "logo_portal_center.png")
     if os.path.exists(logo_path):
-        pic = doc.add_picture(logo_path, width=Inches(5))
+        doc.add_picture(logo_path, width=Inches(5))
         doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     h = doc.add_heading("Orçamento", level=1)
@@ -73,7 +73,7 @@ def generate_document(req: BudgetRequest) -> str:
                 "ID Item": idx + 1,
                 "Qtde": item.qtde,
                 "R$ Unit": item.preco_unitario,
-                "R$ Total": float(item.qtde) * float(item.preco_unitario),
+                "R$ Total": float(item.qtde or 0) * float(item.preco_unitario or 0.0),
                 "Descrição": item.descricao,
             }
             for idx, item in enumerate(req.itens)
