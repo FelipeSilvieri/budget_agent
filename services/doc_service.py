@@ -102,4 +102,5 @@ def generate_document(req: BudgetRequest) -> str:
     filename = f"orcamento_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     path = os.path.join(OUTPUT_DIR, filename)
     doc.save(path)
+    print(BudgetRequest.model_json_schema())
     return f"/static/{filename}"
