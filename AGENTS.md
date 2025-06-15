@@ -1,8 +1,8 @@
 # AGENTS.md
 
-> **TL;DR** This repository hosts an **AI‑powered Quotation Generator** for **Portal Center**, a small business that installs and maintains security gates, CCTV systems and metal structures for condominiums across Greater São Paulo.  The owner sends a short **voice or text message in Telegram** and instantly receives a fully‑formatted **DOCX proposal** based on the company’s long‑time template.  The backend is built with **Python 3.12**, **FastMCP** and **python‑docx**, orchestrated via **n8n**—no extra REST layer is used in the MVP.  This document briefs Codex (and any human contributors) on how the project is organised, how to run it locally and how to collaborate effectively.
+> **TL;DR** This repository hosts an **AI‑powered Quotation Generator** for **Portal Center**, a small business that installs and maintains security gates, CCTV systems and metal structures for condominiums across Greater São Paulo.  The owner sends a short **voice or text message in Telegram** and instantly receives a fully‑formatted **DOCX proposal** based on the company’s long‑time template.  The backend is built with **Python 3.12**, **FastMCP** and **python‑docx**.  This document briefs Codex (and any human contributors) on how the project is organised, how to run it locally and how to collaborate effectively.
 
-> ℹ️ **Mais detalhes sobre a aplicação de MCP encontram‑se na pasta **``**, na raiz do repositório.**
+> ℹ️ **Mais detalhes sobre a aplicação de MCP encontram‑se na pasta** `learn` **na raiz do repositório.**
 
 ---
 
@@ -14,14 +14,14 @@
 | **Primary User** | Company director (Telegram on mobile).                                                                                                                                                                                                      |
 | **MVP Features** | • Parse natural‑language (PT‑BR) voice or text. • Validate required fields (A/C, e‑mail, date…). • Maintain dialogue to collect missing data. • Insert line‑items (product/service, qty, unit price). • Produce DOCX using legacy template. |
 | **Out‑of‑scope** | Redesigning the visual layout, digital signatures, CRM integration (future).                                                                                                                                                                |
-| **Tech Stack**   | Python 3.12, **FastMCP** (streamable‑http transport), python‑docx, Pydantic, PostgreSQL (SQLite for dev), OpenAI GPT‑4o & Whisper, n8n, Telegram Bot API, Docker, GitHub Actions.                                                           |
+| **Tech Stack**   | Python 3.12, **FastMCP**, python-docx, Pandas, Pydantic, OpenAI GPT-4o & Whisper, Telegram Bot API. |
 
 ### 1.1  System Architecture (high‑level)
 
 ```
-┌──────────────────┐      ┌─────────────┐      ┌──────────────────┐
-│ Telegram Client  │──►──│  n8n LLM    │──►──│ FastMCP Server   │
-└──────────────────┘      │  (GPT‑4o)   │      │  (Python)       │
+┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
+│ Telegram Client  │──►──│  LLM Orchestrator │──►──│ FastMCP Server   │
+└──────────────────┘      │    (GPT‑4o)      │      │    (Python)      │
                           └─────┬───────┘      └──────┬──────────┘
                                 │                   ┌─▼───────────┐
                                 │                   │ Service     │
@@ -47,15 +47,14 @@
 ## 2  Code Base Layout
 
 ```
-📦 portalcenter‑quotation
+📦 budget_agent
 ├─ mcp_server.py         # `python mcp_server.py` boots FastMCP
-├─ mcp_tools/            # create_budget.py, add_item.py, … (decorated with @tool)
-├─ services/             # business logic (LLM calls, docx, db)
-├─ templates/            # .docx master template(s)
+├─ mcp_tools/            # MCP tools used by the agent
+├─ services/             # document generation logic
 ├─ tests/                # pytest suites
-├─ scripts/              # one‑off helpers / data loaders
-├─ requirements.txt      # frozen with `pip‑tools`
-└─ docker/               # Dockerfile & compose overrides
+├─ learn/                # FastMCP notes and examples
+├─ requirements.txt      # locked dependencies
+└─ logo_portal_center.png # branding asset used in quotes
 ```
 
 > **Tip:** keep modules small and side‑effect‑free; business logic lives in `services/`, never in `mcp_tools/`.
@@ -72,17 +71,6 @@
 | **Commits**       | **Conventional Commits** (`feat:`, `fix:`, `chore:` …).                                            |
 | **Pull Requests** | At least one reviewer; description must include *what + why + screenshots/JSON sample*.            |
 | **Pre‑commit**    | Run `pre‑commit install`; hooks auto‑run black, ruff, mypy & pytest.                               |
-
----
-
-
-### 4.1  Useful Make Targets
-
-```bash
-make lint   # ruff + mypy
-make test   # pytest + coverage
-make run    # python mcp_server.py (prod flags)
-```
 
 ---
 
@@ -104,12 +92,8 @@ make run    # python mcp_server.py (prod flags)
 
 ## 6  Automation & CI
 
-- **GitHub Actions** pipeline:
-  1. `setup` – cache deps, install Python.
-  2. `lint` – black + ruff + mypy.
-  3. `test` – pytest w/ coverage, upload badge.
-  4. `docker` – build & push on tag `v*.*.*`.
-- Merges into `main` require ✅ for steps 2‑3.
+Continuous integration is not yet configured. Contributors should run
+`ruff`, `mypy` and `pytest` locally before opening a pull request.
 
 ---
 
