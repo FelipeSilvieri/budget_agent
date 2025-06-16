@@ -10,6 +10,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Inches
 from pydantic import BaseModel
 
+from .drive_uploader import upload_file
+
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
@@ -36,7 +38,7 @@ def generate_document(req: BudgetRequest) -> str:
     doc = Document()
     logo_path = os.path.join(os.path.dirname(__file__), "..", "logo_portal_center.png")
     if os.path.exists(logo_path):
-        pic = doc.add_picture(logo_path, width=Inches(5))
+        doc.add_picture(logo_path, width=Inches(5))
         doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     h = doc.add_heading("Orçamento", level=1)
@@ -73,7 +75,7 @@ def generate_document(req: BudgetRequest) -> str:
                 "ID Item": idx + 1,
                 "Qtde": item.qtde,
                 "R$ Unit": item.preco_unitario,
-                "R$ Total": float(item.qtde) * float(item.preco_unitario),
+                "R$ Total": float(item.qtde or 0) * float(item.preco_unitario or 0),
                 "Descrição": item.descricao,
             }
             for idx, item in enumerate(req.itens)
@@ -102,5 +104,11 @@ def generate_document(req: BudgetRequest) -> str:
     filename = f"orcamento_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     path = os.path.join(OUTPUT_DIR, filename)
     doc.save(path)
+    folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
+    if folder_id:
+        try:
+            upload_file(path, folder_id)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Failed to upload to Drive: {exc}")
     print(BudgetRequest.model_json_schema())
     return f"/static/{filename}"
