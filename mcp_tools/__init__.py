@@ -4,8 +4,7 @@ from fastmcp import FastMCP
 
 from .generate_quote import register as register_generate_quote
 
-
-mcp = FastMCP(
+mcp: FastMCP = FastMCP(
     name="Quotation Generator",
     instructions="Uma tool que orquestra a geração de orçamentos para clientes.",
 )
