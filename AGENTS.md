@@ -57,11 +57,44 @@
 └─ logo_portal_center.png # branding asset used in quotes
 ```
 
+### Directory Details
+
+- **mcp_server.py** – ponto de entrada que inicializa o servidor FastMCP na porta ``8000``.
+- **mcp_tools/** – cada módulo registra uma *tool* do MCP. Hoje expomos ``generate_quote``.
+- **services/** – regras de negócio e integrações: ``doc_service.py`` gera o DOCX e ``drive_uploader.py`` faz upload para o Google Drive.
+- **static/** – pasta de saída para orçamentos gerados; arquivos ``.docx`` ficam aqui e são ignorados pelo Git.
+- **tests/** – suíte ``pytest`` cobrindo o serviço de documentos.
+- **learn/** – documentação complementar sobre o FastMCP e exemplos de uso.
+- **Rodar.md** – passo a passo em PT‑BR para rodar a aplicação com ``ngrok`` e ``n8n``.
+- **package.json`` / ``node_modules/** – ambiente Node mínimo usado para automações com o ``n8n``.
+- **token.json** – credenciais OAuth para envio ao Google Drive (não commitadas).
+
 > **Tip:** keep modules small and side‑effect‑free; business logic lives in `services/`, never in `mcp_tools/`.
 
 ---
 
-## 3  Development Standards
+## 3  Quick Start
+
+1. Crie um ambiente Python 3.12 e instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. (Opcional) rode `pre-commit install` para habilitar formatação automática e testes.
+3. Defina `GOOGLE_DRIVE_FOLDER_ID` e mantenha `token.json` com as credenciais do Google.
+4. Execute o servidor MCP:
+   ```bash
+   python mcp_server.py
+   ```
+   Ele escutará em `http://127.0.0.1:8000`.
+5. Para expor externamente e integrar ao Telegram/n8n:
+   ```bash
+   ngrok http 8000
+   ```
+   Depois siga `Rodar.md` para iniciar o fluxo no n8n.
+
+---
+
+## 4  Development Standards
 
 | Category          | Guideline                                                                                          |
 | ----------------- | -------------------------------------------------------------------------------------------------- |
